@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ante Names — a Balatro-themed Codenames</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #221a37;
+    --bg-deep: #180f28;
+    --panel: #322754;
+    --panel-light: #40335f;
+    --gold: #f0c419;
+    --gold-dim: #b8951c;
+    --red: #ef5a5a;
+    --red-deep: #7a1f1f;
+    --blue: #4c8dff;
+    --blue-deep: #16305e;
+    --neutral: #d9c9a0;
+    --neutral-deep: #6b5f45;
+    --assassin: #17111f;
+    --cream: #f4ecd8;
+    --card-back: #2c2350;
+    --joker-tick: #e8534a;
+    --tarot-tick: #8a6de0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, #3a2b62 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 110%, #24406b 0%, transparent 50%),
+      var(--bg-deep);
+    color:var(--cream);
+    font-family:'Space Grotesk', sans-serif;
+    padding:22px;
+  }
+  h1,h2,h3, .display{ font-family:'Fredoka', sans-serif; }
+
+  .wrap{ max-width:1180px; margin:0 auto; }
+
+  header{ text-align:center; margin-bottom:18px; }
+  header h1{
+    font-size:2.4rem; margin:0 0 4px;
+    color:var(--gold);
+    letter-spacing:.5px;
+    text-shadow: 0 3px 0 var(--bg-deep), 0 0 24px rgba(240,196,25,.35);
+  }
+  header p{ margin:0; color:#c9bfe3; font-size:.95rem; }
+
+  .layout{
+    display:grid;
+    grid-template-columns: 1fr 300px;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width: 880px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  .panel{
+    background: linear-gradient(180deg, var(--panel), var(--panel-light));
+    border:2px solid #52427f;
+    border-radius:16px;
+    padding:16px 18px;
+    box-shadow: 0 6px 0 rgba(0,0,0,.25);
+  }
+
+  /* ---------- Scoreboard ---------- */
+  .scoreboard{ display:flex; gap:10px; margin-bottom:14px; }
+  .score-chip{
+    flex:1; border-radius:12px; padding:10px 12px; text-align:center;
+    border:2px solid transparent;
+    font-family:'Fredoka';
+  }
+  .score-chip .n{ font-size:1.8rem; display:block; line-height:1; }
+  .score-chip.red{ background:rgba(239,90,90,.15); border-color:var(--red); color:var(--red); }
+  .score-chip.blue{ background:rgba(76,141,255,.15); border-color:var(--blue); color:var(--blue); }
+  .score-chip.turn{ box-shadow: 0 0 0 3px var(--gold) inset; }
+
+  /* ---------- Board ---------- */
+  .board{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap:10px;
+  }
+  @media (max-width:620px){
+    .board{ grid-template-columns: repeat(3,1fr); }
+  }
+
+  .card{
+    position:relative;
+    aspect-ratio: 3/4;
+    background: linear-gradient(160deg, var(--card-back), #1c1638);
+    border-radius:10px;
+    border:2px solid #4a3d78;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:6px 5px;
+    text-align:center;
+    cursor:pointer;
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    overflow:hidden;
+  }
+  .card:hover{ transform: translateY(-3px); box-shadow: 0 6px 0 rgba(0,0,0,.3); }
+  .card .type-tick{
+    position:absolute; top:5px; left:6px; width:9px; height:9px; border-radius:50%;
+  }
+  .card.joker .type-tick{ background: var(--joker-tick); }
+  .card.tarot .type-tick{ background: var(--tarot-tick); }
+  .card .pip{ position:absolute; top:4px; right:6px; font-size:.75rem; opacity:.55; }
+  .card .name{
+    font-family:'Fredoka'; font-weight:600; font-size:.78rem; line-height:1.15;
+    color:var(--cream); word-break:break-word;
+  }
+
+  .card.revealed{ cursor:default; }
+  .card.revealed:hover{ transform:none; box-shadow:none; }
+  .card.revealed.red{ background:linear-gradient(160deg, var(--red), var(--red-deep)); border-color:var(--red); }
+  .card.revealed.blue{ background:linear-gradient(160deg, var(--blue), var(--blue-deep)); border-color:var(--blue); }
+  .card.revealed.neutral{ background:linear-gradient(160deg, var(--neutral), var(--neutral-deep)); border-color:var(--neutral-deep); color:#2a2213; }
+  .card.revealed.neutral .name{ color:#2a2213; }
+  .card.revealed.assassin{ background:radial-gradient(circle at 50% 30%, #3a1420, var(--assassin)); border-color:var(--red); box-shadow: 0 0 18px rgba(239,90,90,.6) inset; }
+
+  /* spymaster peek coloring for unrevealed cards */
+  .board.spy-red .card:not(.revealed).key-red,
+  .board.spy-blue .card:not(.revealed).key-red{ box-shadow: 0 0 0 3px var(--red) inset; }
+  .board.spy-red .card:not(.revealed).key-blue,
+  .board.spy-blue .card:not(.revealed).key-blue{ box-shadow: 0 0 0 3px var(--blue) inset; }
+  .board.spy-red .card:not(.revealed).key-neutral,
+  .board.spy-blue .card:not(.revealed).key-neutral{ box-shadow: 0 0 0 3px var(--neutral) inset; }
+  .board.spy-red .card:not(.revealed).key-assassin,
+  .board.spy-blue .card:not(.revealed).key-assassin{ box-shadow: 0 0 0 3px #1a1a1a inset, 0 0 12px rgba(239,90,90,.7); }
+
+  .board.operative .card.revealed{ pointer-events:none; }
+
+  /* ---------- Sidebar ---------- */
+  .side > .panel{ margin-bottom:16px; }
+  .side h3{ margin:0 0 10px; font-size:1rem; color:var(--gold); }
+
+  .viewbtns{ display:flex; flex-direction:column; gap:8px; }
+  button{
+    font-family:'Fredoka'; font-size:.85rem; font-weight:600;
+    border:none; border-radius:9px; padding:10px 12px; cursor:pointer;
+    color:var(--cream); background:#4a3d78; box-shadow:0 3px 0 #241a3f;
+    transition: transform .08s ease;
+  }
+  button:hover{ filter:brightness(1.12); }
+  button:active{ transform:translateY(2px); box-shadow:0 1px 0 #241a3f; }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+  button.gold{ background: var(--gold); color:#3b2c05; box-shadow:0 3px 0 var(--gold-dim); }
+  button.red-btn{ background:var(--red); box-shadow:0 3px 0 var(--red-deep); }
+  button.blue-btn{ background:var(--blue); box-shadow:0 3px 0 var(--blue-deep); }
+  button.ghost{ background:transparent; border:1px solid #6a5aa0; box-shadow:none; }
+
+  .clue-form{ display:flex; gap:6px; margin-top:10px; }
+  .clue-form input[type=text]{ flex:1; min-width:0; }
+  .clue-form input[type=number]{ width:56px; }
+  input{
+    font-family:'Space Grotesk'; padding:8px; border-radius:8px; border:1px solid #6a5aa0;
+    background:#1c1638; color:var(--cream);
+  }
+
+  .log{ max-height:150px; overflow-y:auto; font-size:.82rem; display:flex; flex-direction:column; gap:6px; }
+  .log .entry{ padding:6px 8px; border-radius:7px; background:rgba(0,0,0,.2); }
+  .log .entry.red{ border-left:3px solid var(--red); }
+  .log .entry.blue{ border-left:3px solid var(--blue); }
+
+  .status{ font-size:.85rem; color:#d8cdf0; margin-top:6px; line-height:1.4; }
+
+  .tooltip{
+    position:fixed; pointer-events:none; z-index:50;
+    max-width:220px; background:var(--gold); color:#332400;
+    padding:8px 10px; border-radius:8px; font-size:.8rem; line-height:1.3;
+    box-shadow:0 4px 0 var(--gold-dim); display:none; font-family:'Space Grotesk';
+  }
+  .tooltip b{ display:block; font-family:'Fredoka'; margin-bottom:2px; font-size:.85rem; }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,6,20,.85);
+    display:flex; align-items:center; justify-content:center; z-index:100;
+    padding:20px;
+  }
+  .overlay .box{
+    background:var(--panel); border:2px solid var(--gold); border-radius:16px;
+    padding:26px; max-width:360px; text-align:center;
+  }
+  .overlay .box h2{ margin-top:0; color:var(--gold); }
+  .hidden{ display:none !important; }
+
+  .legend{ display:flex; gap:12px; font-size:.75rem; color:#c9bfe3; margin-top:8px; }
+  .legend span{ display:flex; align-items:center; gap:5px; }
+  .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🃏 Ante Names</h1>
+    <p>Codenames, reskinned with Jokers &amp; Tarots. One device, pass it around, no peeking.</p>
+  </header>
+
+  <div class="layout">
+    <div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="scoreboard">
+          <div class="score-chip red" id="chipRed"><span class="n" id="redCount">9</span>Red left</div>
+          <div class="score-chip blue" id="chipBlue"><span class="n" id="blueCount">8</span>Blue left</div>
+        </div>
+        <div class="status" id="statusLine">Set up a new game to begin.</div>
+      </div>
+      <div class="board operative" id="board"></div>
+    </div>
+
+    <div class="side">
+      <div class="panel">
+        <h3>New Game</h3>
+        <div class="viewbtns">
+          <label style="font-size:.8rem;color:#c9bfe3;">First team:
+            <select id="startTeam" style="margin-left:6px;">
+              <option value="red">Red</option>
+              <option value="blue">Blue</option>
+            </select>
+          </label>
+          <button class="gold" id="newGameBtn">Deal a new board</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>View</h3>
+        <div class="viewbtns">
+          <button id="viewOperative" class="ghost">Operative view (hidden)</button>
+          <button id="viewSpyRed" class="red-btn">Red Spymaster view</button>
+          <button id="viewSpyBlue" class="blue-btn">Blue Spymaster view</button>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--joker-tick)"></i>Joker</span>
+          <span><i style="background:var(--tarot-tick)"></i>Tarot</span>
+        </div>
+      </div>
+
+      <div class="panel" id="clueBox">
+        <h3>Give a clue</h3>
+        <div class="clue-form">
+          <input type="text" id="clueWord" placeholder="clue word">
+          <input type="number" id="clueNum" min="0" max="9" value="1">
+          <button class="gold" id="submitClue">Go</button>
+        </div>
+        <button class="ghost" id="endTurnBtn" style="margin-top:10px; width:100%;">End turn</button>
+      </div>
+
+      <div class="panel">
+        <h3>Clue log</h3>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="overlay hidden" id="passOverlay">
+  <div class="box">
+    <h2 id="passTitle">Pass the device</h2>
+    <p id="passText">Only the spymaster should look at the next screen. Everyone else, look away.</p>
+    <button class="gold" id="passConfirm">I'm the only one looking →</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="gameOverOverlay">
+  <div class="box">
+    <h2 id="goTitle">Game over</h2>
+    <p id="goText"></p>
+    <button class="gold" id="goClose">Close</button>
+  </div>
+</div>
+
+<script>
+/* ---------------- Card data: Balatro-flavored, original short descriptions ---------------- */
+const JOKERS = [
+  ["Joker","+4 Mult, plain and simple."],
+  ["Greedy Joker","+3 Mult for every Diamond card played."],
+  ["Lusty Joker","+3 Mult for every Heart card played."],
+  ["Wrathful Joker","+3 Mult for every Spade card played."],
+  ["Gluttonous Joker","+3 Mult for every Club card played."],
+  ["Jolly Joker","+8 Mult if you play a Pair."],
+  ["Zany Joker","+12 Mult if you play Three of a Kind."],
+  ["Mad Joker","+10 Mult if you play Two Pair."],
+  ["Crazy Joker","+12 Mult if you play a Straight."],
+  ["Droll Joker","+10 Mult if you play a Flush."],
+  ["Sly Joker","+50 Chips if you play a Pair."],
+  ["Wily Joker","+100 Chips if you play Three of a Kind."],
+  ["Clever Joker","+80 Chips if you play Two Pair."],
+  ["Devious Joker","+100 Chips if you play a Straight."],
+  ["Crafty Joker","+80 Chips if you play a Flush."],
+  ["Half Joker","+20 Mult if you play three cards or fewer."],
+  ["Joker Stencil","More Mult for every empty Joker slot you've got."],
+  ["Four Fingers","Straights and Flushes only need four cards now."],
+  ["Mime","Retriggers every card held in hand."],
+  ["Credit Card","Lets your debt sink to -20 instead of stopping at zero."],
+  ["Ceremonial Dagger","Destroy the Joker to its right and gain Mult equal to double that Joker's value."],
+  ["Banner","+30 Chips for every discard you have left."],
+  ["Mystic Summit","+15 Mult when you have no discards remaining."],
+  ["Marble Joker","Adds a Stone card to your deck when the round starts."],
+  ["Loyalty Card","×4 Mult, but only every sixth hand."],
+  ["8 Ball","Chance to create a Tarot card whenever you play an 8."],
+  ["Misprint","A random Mult bonus, different every time."],
+  ["Raised Fist","Adds double the rank of your lowest held card as Mult."],
+  ["Fibonacci","+8 Mult for every Ace, 2, 3, 5 or 8 played."],
+  ["Steel Joker","Extra Mult for every Steel card sitting in your deck."],
+  ["Scary Face","+30 Chips for every face card played."],
+  ["Abstract Joker","+3 Mult for every Joker you currently hold."],
+  ["Delayed Gratification","Money at the end of the round if you didn't discard at all."],
+  ["Hack","Retriggers every played 2, 3, 4 or 5."],
+  ["Pareidolia","Every card counts as a face card."],
+  ["Gros Michel","+15 Mult, but has a small chance to go extinct each round."],
+  ["Even Steven","+4 Mult for every even-ranked card played."],
+  ["Odd Todd","+31 Chips for every odd-ranked card played."],
+  ["Scholar","An Ace played gives extra Chips and Mult."],
+  ["Business Card","Face cards have a chance to pay out extra money."],
+  ["Supernova","Adds Mult equal to how many times you've played this poker hand this run."],
+  ["Ride the Bus","Gains Mult for each hand played without a face card, resets if one appears."],
+  ["Space Joker","Chance to level up the poker hand you just played."],
+  ["Egg","Gains sell value at the end of every round."],
+  ["Burglar","Extra discards but loses all hands for the round when the blind is picked."],
+  ["Blackboard","×3 Mult if every card in hand is a Spade or Club."],
+  ["Runner","Gains permanent Chips whenever you play a Straight."],
+  ["Ice Cream","Big Chips bonus that slowly melts away each hand played."],
+  ["DNA","If your first hand of the round is a single card, clone it into your deck."],
+  ["Splash","Every played card counts toward scoring, not just the ones that make the hand."],
+  ["Blue Joker","+2 Chips for every card left in your draw pile."],
+  ["Sixth Sense","Destroys a lone Ace played first and turns it into a Spectral card."],
+  ["Constellation","Gains Mult every time you use a Planet card."],
+  ["Hiker","Every played card permanently gains extra Chips."],
+  ["Faceless Joker","Money if you discard three or more face cards at once."],
+  ["Green Joker","+1 Mult per hand played, -1 Mult per discard."],
+  ["Superposition","Creates a Tarot card if you play an Ace with a Straight."],
+  ["To Do List","Money for completing a random poker hand each round."],
+  ["Cavendish","×3 Mult, with a tiny chance of self-destructing each round."],
+  ["Card Sharp","×3 Mult if you repeat a poker hand type already played this round."],
+  ["Red Card","Gains Mult every time you skip a booster pack."],
+  ["Madness","Gains Mult but destroys a random Joker when you pick a Small or Big Blind."],
+  ["Square Joker","+Chips if your played hand has exactly four cards."],
+  ["Séance","Chance to create a Spectral card from a Straight Flush."],
+  ["Riff-Raff","Creates two Common Jokers when the blind is selected."],
+  ["Vampire","Removes enhancements from played cards and gains Mult per removal."],
+  ["Shortcut","Lets Straights be made with gaps in the ranks."],
+  ["Hologram","Gains Mult every time a playing card is added to your deck."],
+  ["Vagabond","Creates a Tarot card whenever you play a hand with $4 or less."],
+  ["Baron","Kings held in hand multiply your Mult."],
+  ["Cloud 9","Money at end of round for every 9 in your full deck."],
+  ["Rocket","Pays out money each round, and more once a boss is beaten."],
+  ["Obelisk","Mult climbs the longer you go without repeating your favorite hand."],
+  ["Midas Mask","Turns played face cards to Gold."],
+  ["Luchador","Sell it to disable the current Boss Blind's effect."],
+  ["Photograph","The first face card you play gives bonus Mult."],
+  ["Gift Card","Gains permanent sell value every round."],
+  ["Turtle Bean","Boosts hand size, shrinking a little each round."],
+  ["Erosion","+Mult for every card missing from your starting deck size."],
+  ["Reserved Parking","Chance for face cards in hand to pay out money."],
+  ["Mail-In Rebate","Earn money for discarding cards of a chosen rank."],
+  ["To the Moon","Extra interest on your money at round's end."],
+  ["Hallucination","Chance to create a Tarot card when you open a booster pack."],
+  ["Fortune Teller","+Mult for every Tarot card you've used this run."],
+  ["Juggler","+1 hand size."],
+  ["Drunkard","+1 discard per round."],
+  ["Stone Joker","+Chips for every Stone card in your full deck."],
+  ["Golden Joker","Pays out money just for reaching the end of a round."],
+  ["Lucky Cat","Grows in Mult every time a Lucky card triggers."],
+  ["Baseball Card","Uncommon Jokers each multiply your Mult."],
+  ["Bull","+Chips equal to double your current money."],
+  ["Diet Cola","Sell it to duplicate any Joker of your choice."],
+  ["Trading Card","Destroy a lone first discard and get money for it."],
+  ["Flash Card","Gains Mult every time you reroll the shop."],
+  ["Popcorn","Big Mult that shrinks a little each round played."],
+  ["Spare Trousers","Gains Mult whenever you play a Two Pair."],
+  ["Ancient Joker","A random suit gives bonus Mult each round."],
+  ["Ramen","High Mult that drops every time you discard a card."],
+  ["Walkie Talkie","Extra Chips and Mult for playing 10s and 4s."],
+  ["Seltzer","Retriggers every card played for a limited number of hands."],
+  ["Castle","Gains Chips from discarding a suit that changes each round."],
+  ["Smiley Face","+Mult for every face card played."],
+  ["Campfire","Grows in Mult with every card you sell, resets after the Boss Blind."],
+  ["Golden Ticket","Money for every Gold-sealed card you play."],
+  ["Mr. Bones","Sacrifices itself to save you from an otherwise lethal round."],
+  ["Acrobat","×3 Mult on the very last hand of the round."],
+  ["Sock and Buskin","Retriggers every played face card."],
+  ["Swashbuckler","+Mult equal to the total sell value of your other Jokers."],
+  ["Troubadour","+Hand size, -1 hand per round."],
+  ["Certificate","Adds a random sealed playing card to your hand each round."],
+  ["Smeared Joker","Hearts count as Diamonds and Spades count as Clubs for flushes and straights."],
+  ["Throwback","Gains Mult for every Blind you've skipped this run."],
+  ["Hanging Chad","Retriggers the first card scored in your hand."],
+  ["Rough Gem","Diamond cards give extra money when scored."],
+  ["Bloodstone","Chance for Heart cards to double their Mult."],
+  ["Arrowhead","Spade cards give bonus Chips when scored."],
+  ["Onyx Agate","Club cards give bonus Mult when scored."],
+  ["Glass Joker","Gains Mult every time a Glass card shatters."],
+  ["Showman","Jokers, Tarots, Planets and Spectrals can appear more than once in your run."],
+  ["Flower Pot","Big Mult bonus if your hand has all four suits with certain enhancements."],
+  ["Blueprint","Copies the ability of the Joker to its right."],
+  ["Wee Joker","Grows its Chips bonus every time you score a 2."],
+  ["Merry Andy","Extra discards, but smaller hand size."],
+  ["Oops! All 6s","Doubles every probability in your other Jokers."],
+  ["The Idol","A chosen rank gives big Mult whenever it's scored."],
+  ["Seeing Double","×2 Mult if you score a Club alongside any other suit."],
+  ["Matador","Pays out money whenever a Boss Blind's effect triggers."],
+  ["Hit the Road","Gains Mult for every Jack you discard this round."],
+  ["The Duo","×2 Mult if your hand contains a Pair."],
+  ["The Trio","×3 Mult if your hand contains Three of a Kind."],
+  ["The Family","×4 Mult if your hand contains Four of a Kind."],
+  ["The Order","×3 Mult if your hand contains a Straight."],
+  ["The Tribe","×2 Mult if your hand contains a Flush."],
+  ["Stuntman","Big flat Chips bonus, but shrinks your hand size."],
+  ["Invisible Joker","After enough rounds, duplicates a random Joker before vanishing."],
+  ["Brainstorm","Copies the ability of your leftmost Joker."],
+  ["Satellite","Money each round for every unique Planet card you've used."],
+  ["Shoot the Moon","Queens held in hand add extra Mult."],
+  ["Driver's License","×3 Mult once enough of your deck is enhanced."],
+  ["Cartomancer","Creates a Tarot card the moment you select a blind."],
+  ["Astronomer","Every Planet card and celestial pack in the shop is free."],
+  ["Burnt Joker","Levels up the first poker hand you discard each round."],
+  ["Bootstraps","+Mult for every few dollars you're carrying."],
+  ["Canio","Grows its Mult whenever a face card is destroyed."],
+  ["Triboulet","Kings and Queens you play each multiply your Mult."],
+  ["Yorick","Builds toward a huge Mult the more you discard."],
+  ["Chicot","Every Boss Blind's special effect is disabled."],
+  ["Perkeo","Creates a Negative copy of one of your consumable cards after every shop visit."],
+  ["Chaos the Clown","One free shop reroll, every single round."],
+  ["Dusk","Retriggers all played cards during the final hand of the round."]
+];
+
+const TAROTS = [
+  ["The Fool","Copies whichever Tarot or Planet card you used last."],
+  ["The Magician","Turns two selected cards into Lucky cards."],
+  ["The High Priestess","Creates up to two random Planet cards."],
+  ["The Empress","Turns two selected cards into Mult cards."],
+  ["The Emperor","Creates up to two random Tarot cards."],
+  ["The Hierophant","Turns two selected cards into Bonus cards."],
+  ["The Lovers","Turns one selected card into a Wild card."],
+  ["The Chariot","Turns one selected card into a Steel card."],
+  ["Justice","Turns one selected card into a Glass card."],
+  ["The Hermit","Doubles the money you're holding, up to a cap."],
+  ["Wheel of Fortune","A gamble for a random Edition on one of your Jokers."],
+  ["Strength","Raises the rank of two selected cards by one."],
+  ["The Hanged Man","Destroys up to two selected cards for good."],
+  ["Death","Turns one card into an exact copy of another."],
+  ["Temperance","Pays out money equal to the total sell value of your Jokers."],
+  ["The Devil","Turns one selected card into a Gold card."],
+  ["The Tower","Turns one selected card into a Stone card."],
+  ["The Star","Converts up to three selected cards into Diamonds."],
+  ["The Moon","Converts up to three selected cards into Clubs."],
+  ["The Sun","Converts up to three selected cards into Hearts."],
+  ["Judgement","Creates a random Joker, free of charge."],
+  ["The World","Converts up to three selected cards into Spades."]
+];
+
+const PIPS = ["♠","♥","♦","♣"];
+
+const POOL = [
+  ...JOKERS.map(([name,desc]) => ({name, desc, type:"joker"})),
+  ...TAROTS.map(([name,desc]) => ({name, desc, type:"tarot"}))
+];
+
+/* ---------------- Game state ---------------- */
+let state = null;
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+function newGame(){
+  const startTeam = document.getElementById('startTeam').value;
+  const cards = shuffle(POOL).slice(0,25).map(c => ({...c, pip: PIPS[Math.floor(Math.random()*4)]}));
+
+  const counts = startTeam === 'red'
+    ? {red:9, blue:8, neutral:7, assassin:1}
+    : {red:8, blue:9, neutral:7, assassin:1};
+
+  let keys = [];
+  for(const [k,n] of Object.entries(counts)){ for(let i=0;i<n;i++) keys.push(k); }
+  keys = shuffle(keys);
+
+  state = {
+    cards: cards.map((c,i) => ({...c, key:keys[i], revealed:false})),
+    currentTeam: startTeam,
+    remaining: {red:counts.red, blue:counts.blue},
+    guessesLeft: null,
+    view: 'operative',
+    log: [],
+    over: false
+  };
+
+  document.getElementById('log').innerHTML = '';
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  render();
+  setStatus(`${cap(state.currentTeam)} team goes first. Switch to their Spymaster view for a clue.`);
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function setStatus(msg){ document.getElementById('statusLine').textContent = msg; }
+
+function render(){
+  if(!state) return;
+  document.getElementById('redCount').textContent = state.remaining.red;
+  document.getElementById('blueCount').textContent = state.remaining.blue;
+  document.getElementById('chipRed').classList.toggle('turn', state.currentTeam==='red' && !state.over);
+  document.getElementById('chipBlue').classList.toggle('turn', state.currentTeam==='blue' && !state.over);
+
+  const board = document.getElementById('board');
+  board.className = 'board ' + (state.view === 'operative' ? 'operative' : (state.view === 'spymaster-red' ? 'spy-red' : 'spy-blue'));
+  board.innerHTML = '';
+
+  const isSpy = state.view !== 'operative';
+
+  state.cards.forEach((c, idx) => {
+    const div = document.createElement('div');
+    div.className = 'card ' + c.type;
+    if(c.revealed) div.classList.add('revealed', c.key);
+    else if(isSpy) div.classList.add('key-' + c.key);
+
+    div.innerHTML = `
+      <span class="type-tick" title="${c.type === 'joker' ? 'Joker' : 'Tarot'}"></span>
+      <span class="pip">${c.pip}</span>
+      <span class="name">${c.name}</span>
+    `;
+
+    if(isSpy || c.revealed){
+      div.addEventListener('mouseenter', (e) => showTooltip(e, c));
+      div.addEventListener('mousemove', moveTooltip);
+      div.addEventListener('mouseleave', hideTooltip);
+    }
+
+    if(!c.revealed && state.view === 'operative' && !state.over){
+      div.addEventListener('click', () => guess(idx));
+    }
+
+    board.appendChild(div);
+  });
+
+  document.getElementById('clueBox').style.opacity = isSpy ? '1' : '.45';
+  document.getElementById('submitClue').disabled = !isSpy || state.over;
+  document.getElementById('clueWord').disabled = !isSpy || state.over;
+  document.getElementById('clueNum').disabled = !isSpy || state.over;
+  document.getElementById('endTurnBtn').disabled = state.view!=='operative' || state.guessesLeft===null || state.over;
+}
+
+function showTooltip(e, c){
+  const tip = document.getElementById('tooltip');
+  tip.innerHTML = `<b>${c.name}</b>${c.desc}`;
+  tip.style.display = 'block';
+  moveTooltip(e);
+}
+function moveTooltip(e){
+  const tip = document.getElementById('tooltip');
+  tip.style.left = (e.clientX + 16) + 'px';
+  tip.style.top = (e.clientY + 16) + 'px';
+}
+function hideTooltip(){ document.getElementById('tooltip').style.display = 'none'; }
+
+function guess(idx){
+  const c = state.cards[idx];
+  if(c.revealed || state.over) return;
+  c.revealed = true;
+
+  if(c.key === 'assassin'){
+    endGame(state.currentTeam === 'red' ? 'blue' : 'red', `${cap(state.currentTeam)} team hit the assassin card and loses instantly.`);
+    render();
+    return;
+  }
+
+  if(c.key === 'red' || c.key === 'blue'){
+    state.remaining[c.key]--;
+    if(state.remaining[c.key] === 0){
+      endGame(c.key, `All of ${cap(c.key)} team's cards are found — ${cap(c.key)} wins!`);
+      render();
+      return;
+    }
+  }
+
+  const correct = c.key === state.currentTeam;
+  if(correct){
+    if(state.guessesLeft !== null && state.guessesLeft !== Infinity){
+      state.guessesLeft--;
+      if(state.guessesLeft <= 0){ switchTurn(); }
+    }
+  } else {
+    switchTurn();
+  }
+  render();
+}
+
+function switchTurn(){
+  state.currentTeam = state.currentTeam === 'red' ? 'blue' : 'red';
+  state.guessesLeft = null;
+  setStatus(`${cap(state.currentTeam)} team's turn. Switch to their Spymaster view for a clue.`);
+}
+
+function endGame(winner, reason){
+  state.over = true;
+  document.getElementById('goTitle').textContent = `${cap(winner)} team wins!`;
+  document.getElementById('goText').textContent = reason;
+  document.getElementById('gameOverOverlay').classList.remove('hidden');
+  setStatus(reason);
+}
+
+/* ---------------- View switching with pass-the-device gate ---------------- */
+function requestView(target){
+  if(!state) return;
+  if(target === 'operative'){
+    state.view = 'operative';
+    render();
+    return;
+  }
+  const team = target === 'spymaster-red' ? 'Red' : 'Blue';
+  document.getElementById('passTitle').textContent = `Pass to the ${team} Spymaster`;
+  document.getElementById('passText').textContent = `Only the ${team} Spymaster should be looking. Everyone else, eyes away from the screen.`;
+  document.getElementById('passOverlay').classList.remove('hidden');
+  document.getElementById('passConfirm').onclick = () => {
+    document.getElementById('passOverlay').classList.add('hidden');
+    state.view = target;
+    render();
+  };
+}
+
+/* ---------------- Wire up controls ---------------- */
+document.getElementById('newGameBtn').addEventListener('click', newGame);
+document.getElementById('viewOperative').addEventListener('click', () => requestView('operative'));
+document.getElementById('viewSpyRed').addEventListener('click', () => requestView('spymaster-red'));
+document.getElementById('viewSpyBlue').addEventListener('click', () => requestView('spymaster-blue'));
+document.getElementById('goClose').addEventListener('click', () => document.getElementById('gameOverOverlay').classList.add('hidden'));
+
+document.getElementById('endTurnBtn').addEventListener('click', () => {
+  if(!state || state.over) return;
+  switchTurn();
+  render();
+});
+
+document.getElementById('submitClue').addEventListener('click', () => {
+  if(!state || state.over) return;
+  const isSpyForCurrent = state.view === `spymaster-${state.currentTeam}`;
+  if(!isSpyForCurrent){
+    alert(`Switch to the ${cap(state.currentTeam)} Spymaster view first — it's their turn.`);
+    return;
+  }
+  const word = document.getElementById('clueWord').value.trim();
+  const num = parseInt(document.getElementById('clueNum').value, 10) || 0;
+  if(!word){ alert('Type a clue word first.'); return; }
+
+  state.guessesLeft = num === 0 ? Infinity : num + 1;
+  state.log.unshift({team: state.currentTeam, word, num});
+  const entry = document.createElement('div');
+  entry.className = 'entry ' + state.currentTeam;
+  entry.textContent = `${cap(state.currentTeam)}: "${word}" — ${num}`;
+  document.getElementById('log').prepend(entry);
+
+  document.getElementById('clueWord').value = '';
+  requestView('operative');
+  setStatus(`Clue given: "${word}" for ${num}. Operatives, start guessing.`);
+});
+
+/* Kick off an initial game on load */
+newGame();
+</script>
+</body>
+</html>
