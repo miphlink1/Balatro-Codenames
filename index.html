@@ -3,17 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#101619">
 <title>Ante Names — a Balatro-themed Codenames</title>
+<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preload" as="image" href="https://raw.githubusercontent.com/VilleKokkarinen/SampleJimbos/master/Balatro_Textures/Jokers.png" crossorigin>
+<link rel="preload" as="image" href="https://raw.githubusercontent.com/VilleKokkarinen/SampleJimbos/master/Balatro_Textures/Tarots.png" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
+  /* ------------------------------------------------------------------
+     Balatro's UI typeface: m6x11plus by Daniel Linssen (managore).
+     Hosted on GitHub (two repo mirrors) so we're not pulling from
+     a wiki. TTF first for maximum fidelity, woff2 for smaller transfer.
+     Free to use with attribution: https://managore.itch.io/m6x11
+  ------------------------------------------------------------------ */
+  @font-face{
+    font-family:'m6x11plus';
+    src:url('https://raw.githubusercontent.com/spikeof2010/JankJonklers/main/m6x11plus.ttf') format('truetype'),
+        url('https://cdn.jsdelivr.net/gh/Lesuu/fonts@main/m6x11plus.woff2') format('woff2');
+    font-weight:normal; font-style:normal; font-display:swap;
+  }
+
   :root{
+    /* ---- original card palette (untouched) ---- */
     --bg: #221a37;
     --bg-deep: #180f28;
     --panel: #322754;
     --panel-light: #40335f;
-    --gold: #f0c419;
-    --gold-dim: #b8951c;
+    --gold: #fdaa00;
+    --gold-dim: #a86a00;
     --red: #ef5a5a;
     --red-deep: #7a1f1f;
     --blue: #4c8dff;
@@ -25,36 +45,122 @@
     --card-back: #2c2350;
     --joker-tick: #e8534a;
     --tarot-tick: #8a6de0;
+
+    /* ---- Balatro chrome ---- */
+    --ink:#070b0d;
+    --felt-1:rgba(42,56,64,.93);
+    --felt-2:rgba(18,26,31,.95);
+    --mat-1:rgba(16,23,28,.88);
+    --mat-2:rgba(9,14,18,.92);
+    --edge:rgba(255,255,255,.11);
+    --txt:#f3f7f8;
+    --txt-dim:#9fb0b7;
+    --ui-red:#fe5f55;
+    --ui-red-dark:#9e2c25;
+    --ui-blue:#0e93e8;
+    --ui-blue-dark:#0a5488;
+    --ui-slate:#3d4b53;
+    --ui-slate-dark:#1f292f;
+
+    --f:'m6x11plus','Silkscreen',ui-monospace,'Courier New',monospace;
+
+    color-scheme:dark;
   }
-  *{box-sizing:border-box;}
+
+  *{ box-sizing:border-box; }
+  html{ height:100%; }
+
   body{
     margin:0;
     min-height:100vh;
     background:
-      radial-gradient(ellipse at 20% -10%, #3a2b62 0%, transparent 55%),
-      radial-gradient(ellipse at 90% 110%, #24406b 0%, transparent 50%),
-      var(--bg-deep);
-    color:var(--cream);
-    font-family:'Space Grotesk', sans-serif;
-    padding:22px;
+      radial-gradient(ellipse at 18% 8%, #a8382d 0%, transparent 52%),
+      radial-gradient(ellipse at 84% 88%, #0b5c92 0%, transparent 55%),
+      #101a20;
+    background-attachment:fixed;
+    color:var(--txt);
+    font-family:var(--f);
+    font-size:17px;
+    letter-spacing:.3px;
+    padding:26px 22px 44px;
+    overflow-x:hidden;
+    -webkit-tap-highlight-color:transparent;
   }
-  h1,h2,h3, .display{ font-family:'Fredoka', sans-serif; }
+  h1,h2,h3,.display{ font-family:var(--f); font-weight:normal; }
 
-  .wrap{ max-width:1180px; margin:0 auto; }
-
-  header{ text-align:center; margin-bottom:18px; }
-  header h1{
-    font-size:2.4rem; margin:0 0 4px;
-    color:var(--gold);
-    letter-spacing:.5px;
-    text-shadow: 0 3px 0 var(--bg-deep), 0 0 24px rgba(240,196,25,.35);
+  /* ---------- Live Balatro paint background ---------- */
+  #bgCanvas{
+    position:fixed; inset:0; width:100%; height:100%;
+    z-index:-3; display:block;
+    filter:brightness(.72) saturate(1.08) contrast(1.04);
+    image-rendering:pixelated;
   }
-  header p{ margin:0; color:#c9bfe3; font-size:.95rem; }
+  .bg-fx{
+    position:fixed; inset:0; z-index:-2; pointer-events:none;
+  }
+  .bg-fx.vignette{
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(0,0,0,0) 0%, rgba(4,7,9,.55) 62%, rgba(2,4,5,.88) 100%);
+  }
+  .bg-fx.scan{
+    background:repeating-linear-gradient(to bottom, rgba(0,0,0,.20) 0 1px, rgba(255,255,255,.012) 1px 3px);
+    opacity:.55; mix-blend-mode:multiply;
+  }
 
+  .build-tag{
+    position:fixed; top:10px; right:16px; z-index:6; pointer-events:none;
+    font-size:13px; letter-spacing:1.4px; color:rgba(255,255,255,.34);
+    text-shadow:0 2px 0 rgba(0,0,0,.55);
+  }
+
+  .wrap{ max-width:1240px; margin:0 auto; position:relative; }
+
+  /* ---------- Header / logo ---------- */
+  header{ text-align:center; margin:6px 0 26px; }
+  .logo{
+    display:flex; align-items:center; justify-content:center; gap:16px;
+    margin:0 0 12px; line-height:.92;
+    font-size:clamp(40px,7.4vw,78px);
+    text-transform:uppercase; letter-spacing:3px;
+  }
+  .logo .word{
+    color:#fff;
+    text-shadow:
+      3px 0 0 var(--ink), -3px 0 0 var(--ink), 0 3px 0 var(--ink), 0 -3px 0 var(--ink),
+      3px 3px 0 var(--ink), -3px 3px 0 var(--ink), 3px -3px 0 var(--ink), -3px -3px 0 var(--ink),
+      -8px -7px 0 rgba(222,68,59,.8), 8px 7px 0 rgba(0,131,208,.8),
+      0 14px 20px rgba(0,0,0,.6);
+  }
+  .logo-card{
+    position:relative; display:inline-flex;
+    width:.66em; height:.92em;
+    background:linear-gradient(170deg,#ffffff,#e4e7ea);
+    border:3px solid var(--ink); border-radius:.1em;
+    transform:rotate(-5deg);
+    box-shadow:0 .1em 0 rgba(0,0,0,.55), 0 .16em .22em rgba(0,0,0,.5);
+    flex:0 0 auto;
+  }
+  .logo-card .rank{ position:absolute; top:.02em; left:.06em; font-size:.26em; color:#15191c; line-height:1; }
+  .logo-card .rank.br{ top:auto; left:auto; bottom:.02em; right:.06em; transform:rotate(180deg); }
+  .logo-card .suit{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:.46em; color:#15191c;
+  }
+  .tagline{
+    margin:0; font-size:15px; color:var(--txt-dim); letter-spacing:.8px;
+    text-shadow:0 2px 0 rgba(0,0,0,.65);
+  }
+  .rule{
+    width:min(520px,80%); height:3px; margin:16px auto 0; border-radius:3px;
+    background:linear-gradient(90deg, transparent, rgba(253,170,0,.75), transparent);
+    box-shadow:0 0 16px rgba(253,170,0,.35);
+  }
+
+  /* ---------- Layout ---------- */
   .layout{
     display:grid;
-    grid-template-columns: 1fr 300px;
-    gap:20px;
+    grid-template-columns: 1fr 318px;
+    gap:22px;
     align-items:start;
   }
   @media (max-width: 880px){
@@ -62,26 +168,96 @@
   }
 
   .panel{
-    background: linear-gradient(180deg, var(--panel), var(--panel-light));
-    border:2px solid #52427f;
+    position:relative;
+    background:linear-gradient(180deg, var(--felt-1), var(--felt-2));
+    border:2px solid var(--edge);
     border-radius:16px;
-    padding:16px 18px;
-    box-shadow: 0 6px 0 rgba(0,0,0,.25);
+    padding:16px 18px 18px;
+    box-shadow:
+      0 8px 0 rgba(0,0,0,.45),
+      0 16px 30px rgba(0,0,0,.45),
+      inset 0 2px 0 rgba(255,255,255,.07),
+      inset 0 -4px 0 rgba(0,0,0,.30);
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
+  }
+  .panel h3{
+    display:flex; align-items:center; gap:9px;
+    margin:0 0 13px; font-size:17px; letter-spacing:1.6px; text-transform:uppercase;
+    color:var(--gold); text-shadow:0 2px 0 rgba(0,0,0,.65);
+  }
+  .panel h3::before{
+    content:''; width:9px; height:9px; background:var(--gold); transform:rotate(45deg);
+    box-shadow:0 0 12px rgba(253,170,0,.75); flex:0 0 auto;
   }
 
   /* ---------- Scoreboard ---------- */
-  .scoreboard{ display:flex; gap:10px; margin-bottom:14px; }
+  .scoreboard{ display:flex; gap:12px; margin-bottom:14px; }
   .score-chip{
-    flex:1; border-radius:12px; padding:10px 12px; text-align:center;
+    flex:1; border-radius:14px; padding:12px 8px 10px; text-align:center;
     border:2px solid transparent;
-    font-family:'Fredoka';
+    font-family:var(--f); font-size:13px; letter-spacing:1.4px; text-transform:uppercase;
+    background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(0,0,0,.28));
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.06), 0 5px 0 rgba(0,0,0,.36);
+    transition:box-shadow .18s ease, transform .18s ease;
   }
-  .score-chip .n{ font-size:1.8rem; display:block; line-height:1; }
-  .score-chip.red{ background:rgba(239,90,90,.15); border-color:var(--red); color:var(--red); }
-  .score-chip.blue{ background:rgba(76,141,255,.15); border-color:var(--blue); color:var(--blue); }
-  .score-chip.turn{ box-shadow: 0 0 0 3px var(--gold) inset; }
+  .score-chip .n{
+    font-size:42px; display:block; line-height:.86; margin-bottom:6px; color:#fff;
+    text-shadow:0 3px 0 rgba(0,0,0,.55);
+  }
+  .score-chip::after{
+    content:'standing by'; display:block; margin-top:7px; font-size:12px;
+    letter-spacing:1.2px; color:rgba(255,255,255,.4);
+  }
+  .score-chip.red{ background:linear-gradient(180deg, rgba(254,95,85,.30), rgba(110,25,21,.34)); border-color:var(--ui-red); color:#ffc2bd; }
+  .score-chip.blue{ background:linear-gradient(180deg, rgba(14,147,232,.30), rgba(12,54,88,.36)); border-color:var(--ui-blue); color:#bde2ff; }
+  .score-chip.turn{
+    box-shadow:inset 0 0 0 3px var(--gold), inset 0 2px 0 rgba(255,255,255,.08), 0 0 26px rgba(253,170,0,.3), 0 5px 0 rgba(0,0,0,.36);
+    transform:translateY(-2px);
+  }
+  .score-chip.turn::after{ content:'◆ to play ◆'; color:var(--gold); }
 
-  /* ---------- Board ---------- */
+  .status{
+    font-size:15px; color:#cfdce1; line-height:1.5; letter-spacing:.4px;
+    background:rgba(0,0,0,.32); border-left:3px solid var(--gold);
+    border-radius:0 10px 10px 0; padding:11px 13px;
+  }
+
+  /* ---------- Board mat ---------- */
+  .board-mat{
+    margin-top:20px;
+    background:linear-gradient(180deg, var(--mat-1), var(--mat-2));
+    border:2px solid var(--edge);
+    border-radius:20px;
+    padding:14px 14px 16px;
+    box-shadow:
+      inset 0 0 48px rgba(0,0,0,.6),
+      0 10px 0 rgba(0,0,0,.42),
+      0 20px 38px rgba(0,0,0,.45),
+      inset 0 2px 0 rgba(255,255,255,.05);
+    backdrop-filter:blur(3px);
+    -webkit-backdrop-filter:blur(3px);
+    transition:box-shadow .25s ease;
+  }
+  .board-mat.spy-red{ box-shadow:inset 0 0 48px rgba(0,0,0,.6), inset 0 0 0 2px rgba(254,95,85,.55), 0 10px 0 rgba(0,0,0,.42), 0 20px 44px rgba(150,30,25,.35); }
+  .board-mat.spy-blue{ box-shadow:inset 0 0 48px rgba(0,0,0,.6), inset 0 0 0 2px rgba(14,147,232,.55), 0 10px 0 rgba(0,0,0,.42), 0 20px 44px rgba(10,80,140,.35); }
+  .mat-bar{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:2px 4px 12px;
+  }
+  .mat-bar .mat-title{
+    font-size:13px; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.45);
+  }
+  .view-badge{
+    font-size:13px; letter-spacing:1.4px; text-transform:uppercase;
+    padding:5px 11px; border-radius:999px;
+    background:rgba(255,255,255,.07); border:2px solid rgba(255,255,255,.16);
+    color:var(--txt-dim); white-space:nowrap;
+  }
+  .view-badge.red{ color:#ffd0cb; border-color:var(--ui-red); background:rgba(254,95,85,.2); }
+  .view-badge.blue{ color:#cfe8ff; border-color:var(--ui-blue); background:rgba(14,147,232,.2); }
+
+  /* ---------- Board (cards unchanged) ---------- */
   .board{
     display:grid;
     grid-template-columns: repeat(5, 1fr);
@@ -107,14 +283,87 @@
   .card:hover{ transform: translateY(-3px); box-shadow: 0 6px 0 rgba(0,0,0,.3); }
   .card .type-tick{
     position:absolute; top:5px; left:6px; width:9px; height:9px; border-radius:50%;
+    z-index:4; box-shadow:0 0 0 2px rgba(0,0,0,.55);
   }
   .card.joker .type-tick{ background: var(--joker-tick); }
   .card.tarot .type-tick{ background: var(--tarot-tick); }
-  .card .pip{ position:absolute; top:4px; right:6px; font-size:.75rem; opacity:.55; }
+  .card .pip{
+    position:absolute; top:3px; right:5px; font-size:.8rem; opacity:.9; z-index:4;
+    background:rgba(6,10,13,.72); color:#fff; border-radius:5px; padding:0 4px; line-height:1.25;
+  }
   .card .name{
-    font-family:'Fredoka'; font-weight:600; font-size:.78rem; line-height:1.15;
+    position:relative; z-index:2;
+    font-family:var(--f); font-size:15px; line-height:1.1; letter-spacing:.2px;
     color:var(--cream); word-break:break-word;
   }
+
+  /* ---- Real Balatro sprite art (atlases pulled from GitHub, see script) ---- */
+  .card .art{
+    display:none;
+    position:absolute; left:0; top:0; width:100%; aspect-ratio:71/95; z-index:0;
+    background-repeat:no-repeat;
+    background-size:1000% auto;
+    background-position:calc(var(--sx, 0) / 9 * 100%) calc(var(--sy, 0) / (var(--rows, 16) - 1) * 100%);
+    image-rendering:pixelated; image-rendering:crisp-edges;
+    pointer-events:none;
+    transition:filter .2s ease;
+  }
+  .card.joker .art{ background-image:var(--atlas-joker); --rows:var(--rows-joker, 16); }
+  .card.tarot .art{ background-image:var(--atlas-tarot); --rows:var(--rows-tarot, 6); }
+  body.atlas-joker .card.joker .art,
+  body.atlas-tarot .card.tarot .art{ display:block; }
+
+  /* name plate sits along the bottom once art is showing */
+  body.atlas-joker .card.joker.has-art,
+  body.atlas-tarot .card.tarot.has-art{ justify-content:flex-end; padding:4px; background:#0d1216; border-color:#1c262d; }
+  body.atlas-joker .card.joker.has-art .name,
+  body.atlas-tarot .card.tarot.has-art .name{
+    width:100%; padding:4px 3px 3px;
+    background:rgba(7,11,14,.88); border:1px solid rgba(255,255,255,.16); border-radius:6px;
+    color:#fff; font-size:13px; text-shadow:0 1px 0 rgba(0,0,0,.7);
+    box-shadow:0 2px 0 rgba(0,0,0,.45);
+  }
+
+  /* team wash over the art when revealed */
+  .card::before{
+    content:''; position:absolute; inset:0; z-index:1; pointer-events:none;
+    border-radius:inherit; opacity:0; transition:opacity .2s ease;
+  }
+  .card.revealed::before{ opacity:1; }
+  .card.revealed.red::before{ background:linear-gradient(160deg, rgba(239,90,90,.80), rgba(122,31,31,.92)); }
+  .card.revealed.blue::before{ background:linear-gradient(160deg, rgba(76,141,255,.80), rgba(22,48,94,.92)); }
+  .card.revealed.neutral::before{ background:linear-gradient(160deg, rgba(217,201,160,.86), rgba(107,95,69,.94)); }
+  .card.revealed.assassin::before{ background:radial-gradient(circle at 50% 30%, rgba(58,20,32,.9), rgba(23,17,31,.98)); }
+  .card.revealed .art{ filter:grayscale(.65) brightness(.55) contrast(1.1); }
+  body.atlas-joker .card.joker.has-art.revealed.red .name,
+  body.atlas-tarot .card.tarot.has-art.revealed.red .name{ background:rgba(90,18,18,.92); border-color:#ffb4b4; }
+  body.atlas-joker .card.joker.has-art.revealed.blue .name,
+  body.atlas-tarot .card.tarot.has-art.revealed.blue .name{ background:rgba(16,38,80,.92); border-color:#b9d4ff; }
+  body.atlas-joker .card.joker.has-art.revealed.neutral .name,
+  body.atlas-tarot .card.tarot.has-art.revealed.neutral .name{ background:rgba(244,236,216,.94); border-color:#6b5f45; color:#2a2213; text-shadow:none; }
+  body.atlas-joker .card.joker.has-art.revealed.assassin .name,
+  body.atlas-tarot .card.tarot.has-art.revealed.assassin .name{ background:#050307; border-color:var(--red); color:var(--red); }
+
+  /* spymaster key ring drawn above the art */
+  .card::after{
+    content:''; position:absolute; inset:0; z-index:3; pointer-events:none; border-radius:inherit;
+  }
+  .board.spy-red .card:not(.revealed).key-red::after,
+  .board.spy-blue .card:not(.revealed).key-red::after{ box-shadow:inset 0 0 0 4px var(--red), inset 0 0 0 6px rgba(0,0,0,.55); }
+  .board.spy-red .card:not(.revealed).key-blue::after,
+  .board.spy-blue .card:not(.revealed).key-blue::after{ box-shadow:inset 0 0 0 4px var(--blue), inset 0 0 0 6px rgba(0,0,0,.55); }
+  .board.spy-red .card:not(.revealed).key-neutral::after,
+  .board.spy-blue .card:not(.revealed).key-neutral::after{ box-shadow:inset 0 0 0 4px var(--neutral), inset 0 0 0 6px rgba(0,0,0,.55); }
+  .board.spy-red .card:not(.revealed).key-assassin::after,
+  .board.spy-blue .card:not(.revealed).key-assassin::after{ box-shadow:inset 0 0 0 4px #0a0a0a, inset 0 0 0 6px var(--red), inset 0 0 22px rgba(239,90,90,.75); }
+  .board.spy-red .card:not(.revealed).key-red .name,
+  .board.spy-blue .card:not(.revealed).key-red .name{ border-color:var(--red) !important; }
+  .board.spy-red .card:not(.revealed).key-blue .name,
+  .board.spy-blue .card:not(.revealed).key-blue .name{ border-color:var(--blue) !important; }
+  .board.spy-red .card:not(.revealed).key-neutral .name,
+  .board.spy-blue .card:not(.revealed).key-neutral .name{ border-color:var(--neutral) !important; }
+  .board.spy-red .card:not(.revealed).key-assassin .name,
+  .board.spy-blue .card:not(.revealed).key-assassin .name{ border-color:var(--red) !important; color:var(--red) !important; }
 
   .card.revealed{ cursor:default; }
   .card.revealed:hover{ transform:none; box-shadow:none; }
@@ -137,89 +386,216 @@
   .board.operative .card.revealed{ pointer-events:none; }
 
   /* ---------- Sidebar ---------- */
-  .side > .panel{ margin-bottom:16px; }
-  .side h3{ margin:0 0 10px; font-size:1rem; color:var(--gold); }
+  .side > .panel{ margin-bottom:20px; }
+  .side > .panel:last-child{ margin-bottom:0; }
 
-  .viewbtns{ display:flex; flex-direction:column; gap:8px; }
+  .viewbtns{ display:flex; flex-direction:column; gap:10px; }
+
+  .field{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    font-size:14px; letter-spacing:1.2px; text-transform:uppercase; color:var(--txt-dim);
+    background:rgba(0,0,0,.28); border:2px solid rgba(255,255,255,.08);
+    border-radius:11px; padding:8px 8px 8px 12px; margin-bottom:4px;
+  }
+
   button{
-    font-family:'Fredoka'; font-size:.85rem; font-weight:600;
-    border:none; border-radius:9px; padding:10px 12px; cursor:pointer;
-    color:var(--cream); background:#4a3d78; box-shadow:0 3px 0 #241a3f;
-    transition: transform .08s ease;
+    font-family:var(--f); font-size:16px; letter-spacing:1.2px; text-transform:uppercase;
+    border:none; border-radius:11px; padding:12px 14px; cursor:pointer;
+    color:#fff; background:var(--ui-slate);
+    box-shadow:0 5px 0 var(--ui-slate-dark), 0 8px 14px rgba(0,0,0,.4);
+    text-shadow:0 2px 0 rgba(0,0,0,.4);
+    transition: transform .07s ease, box-shadow .07s ease, filter .14s ease;
   }
-  button:hover{ filter:brightness(1.12); }
-  button:active{ transform:translateY(2px); box-shadow:0 1px 0 #241a3f; }
-  button:disabled{ opacity:.4; cursor:not-allowed; }
-  button.gold{ background: var(--gold); color:#3b2c05; box-shadow:0 3px 0 var(--gold-dim); }
-  button.red-btn{ background:var(--red); box-shadow:0 3px 0 var(--red-deep); }
-  button.blue-btn{ background:var(--blue); box-shadow:0 3px 0 var(--blue-deep); }
-  button.ghost{ background:transparent; border:1px solid #6a5aa0; box-shadow:none; }
+  button .b-sub{
+    display:block; font-size:12px; letter-spacing:1px; opacity:.7; margin-top:4px; text-transform:uppercase;
+  }
+  button:hover{ filter:brightness(1.13); }
+  button:active{ transform:translateY(4px); box-shadow:0 1px 0 var(--ui-slate-dark), 0 2px 6px rgba(0,0,0,.4); }
+  button:focus-visible{ outline:3px solid rgba(253,170,0,.8); outline-offset:3px; }
+  button:disabled{ opacity:.35; cursor:not-allowed; filter:grayscale(.45); transform:none; }
+  button.gold{ background:var(--gold); color:#2a1a00; box-shadow:0 5px 0 var(--gold-dim), 0 8px 14px rgba(0,0,0,.4); text-shadow:0 2px 0 rgba(255,255,255,.22); }
+  button.gold:active{ box-shadow:0 1px 0 var(--gold-dim), 0 2px 6px rgba(0,0,0,.4); }
+  button.red-btn{ background:var(--ui-red); box-shadow:0 5px 0 var(--ui-red-dark), 0 8px 14px rgba(0,0,0,.4); }
+  button.red-btn:active{ box-shadow:0 1px 0 var(--ui-red-dark), 0 2px 6px rgba(0,0,0,.4); }
+  button.blue-btn{ background:var(--ui-blue); box-shadow:0 5px 0 var(--ui-blue-dark), 0 8px 14px rgba(0,0,0,.4); }
+  button.blue-btn:active{ box-shadow:0 1px 0 var(--ui-blue-dark), 0 2px 6px rgba(0,0,0,.4); }
+  button.ghost{
+    background:rgba(255,255,255,.06); border:2px solid rgba(255,255,255,.18);
+    box-shadow:0 5px 0 rgba(0,0,0,.4); color:var(--txt);
+  }
+  button.ghost:active{ box-shadow:0 1px 0 rgba(0,0,0,.4); }
+  button.is-active{
+    box-shadow:0 0 0 3px var(--gold), 0 5px 0 rgba(0,0,0,.45), 0 0 22px rgba(253,170,0,.35);
+  }
 
-  .clue-form{ display:flex; gap:6px; margin-top:10px; }
+  .clue-form{ display:flex; gap:8px; margin-top:4px; }
   .clue-form input[type=text]{ flex:1; min-width:0; }
-  .clue-form input[type=number]{ width:56px; }
-  input{
-    font-family:'Space Grotesk'; padding:8px; border-radius:8px; border:1px solid #6a5aa0;
-    background:#1c1638; color:var(--cream);
+  .clue-form input[type=number]{ width:64px; text-align:center; }
+  #clueBox{ transition:opacity .2s ease; }
+
+  input, select{
+    font-family:var(--f); font-size:16px; letter-spacing:.6px;
+    padding:10px; border-radius:10px;
+    border:2px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.38); color:var(--txt);
+    box-shadow:inset 0 2px 7px rgba(0,0,0,.55);
+  }
+  input::placeholder{ color:#6e828a; }
+  input:focus, select:focus{
+    outline:none; border-color:var(--gold);
+    box-shadow:inset 0 2px 7px rgba(0,0,0,.55), 0 0 0 3px rgba(253,170,0,.25);
+  }
+  select{
+    appearance:none; -webkit-appearance:none; padding:8px 30px 8px 12px; cursor:pointer;
+    text-transform:uppercase; font-size:14px; letter-spacing:1.2px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M0 0h12L6 8z' fill='%23fdaa00'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center;
+    background-color:rgba(0,0,0,.38);
   }
 
-  .log{ max-height:150px; overflow-y:auto; font-size:.82rem; display:flex; flex-direction:column; gap:6px; }
-  .log .entry{ padding:6px 8px; border-radius:7px; background:rgba(0,0,0,.2); }
-  .log .entry.red{ border-left:3px solid var(--red); }
-  .log .entry.blue{ border-left:3px solid var(--blue); }
+  .log{ max-height:176px; overflow-y:auto; font-size:14px; display:flex; flex-direction:column; gap:8px; padding-right:4px; }
+  .log .entry{
+    padding:9px 11px; border-radius:9px; background:rgba(0,0,0,.34);
+    letter-spacing:.4px; color:#dce7eb;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .log .entry.red{ border-left:4px solid var(--ui-red); }
+  .log .entry.blue{ border-left:4px solid var(--ui-blue); }
+  .log:empty::before{
+    content:'No clues yet — the spymaster is thinking.';
+    color:rgba(255,255,255,.32); font-size:14px; letter-spacing:.6px; line-height:1.5;
+  }
+  .log::-webkit-scrollbar{ width:8px; }
+  .log::-webkit-scrollbar-track{ background:rgba(0,0,0,.3); border-radius:8px; }
+  .log::-webkit-scrollbar-thumb{ background:rgba(253,170,0,.45); border-radius:8px; }
+  .log::-webkit-scrollbar-thumb:hover{ background:rgba(253,170,0,.7); }
 
-  .status{ font-size:.85rem; color:#d8cdf0; margin-top:6px; line-height:1.4; }
+  .legend{ display:flex; gap:14px; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--txt-dim); margin-top:12px; }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .legend i{ width:10px; height:10px; border-radius:50%; display:inline-block; box-shadow:0 0 8px currentColor; }
 
+  /* ---------- Tooltip ---------- */
   .tooltip{
     position:fixed; pointer-events:none; z-index:50;
-    max-width:220px; background:var(--gold); color:#332400;
-    padding:8px 10px; border-radius:8px; font-size:.8rem; line-height:1.3;
-    box-shadow:0 4px 0 var(--gold-dim); display:none; font-family:'Space Grotesk';
+    max-width:252px;
+    background:linear-gradient(180deg,#26333c,#121a1f);
+    color:#e9f1f4;
+    border:2px solid rgba(255,255,255,.14);
+    padding:0 12px 12px; border-radius:13px;
+    font-size:14px; line-height:1.45; letter-spacing:.3px;
+    box-shadow:0 9px 0 rgba(0,0,0,.4), 0 18px 32px rgba(0,0,0,.55);
+    display:none; font-family:var(--f);
+    overflow:hidden;
   }
-  .tooltip b{ display:block; font-family:'Fredoka'; margin-bottom:2px; font-size:.85rem; }
+  .tooltip b{
+    display:block; margin:0 -12px 10px; padding:7px 12px;
+    background:linear-gradient(180deg, var(--gold), #c97f00);
+    color:#241500; font-weight:normal; font-size:15px;
+    letter-spacing:1.1px; text-transform:uppercase;
+    text-shadow:0 1px 0 rgba(255,255,255,.25);
+  }
 
+  /* ---------- Overlays ---------- */
   .overlay{
-    position:fixed; inset:0; background:rgba(10,6,20,.85);
+    position:fixed; inset:0; background:rgba(5,9,11,.8);
+    backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);
     display:flex; align-items:center; justify-content:center; z-index:100;
     padding:20px;
+    animation:fade .2s ease both;
   }
   .overlay .box{
-    background:var(--panel); border:2px solid var(--gold); border-radius:16px;
-    padding:26px; max-width:360px; text-align:center;
+    background:linear-gradient(180deg,#2a3840,#121a1f);
+    border:2px solid rgba(255,255,255,.13);
+    border-radius:20px;
+    padding:26px 26px 28px; max-width:430px; text-align:center;
+    box-shadow:0 14px 0 rgba(0,0,0,.45), 0 26px 54px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.07);
+    animation:pop .24s cubic-bezier(.2,1.5,.5,1) both;
   }
-  .overlay .box h2{ margin-top:0; color:var(--gold); }
+  .overlay .suits{
+    display:flex; justify-content:center; gap:12px; font-size:19px;
+    color:rgba(255,255,255,.35); margin-bottom:10px; letter-spacing:2px;
+  }
+  .overlay .suits span:nth-child(2),
+  .overlay .suits span:nth-child(3){ color:rgba(254,95,85,.6); }
+  .overlay .box h2{
+    margin:0 0 12px; font-size:26px; letter-spacing:1.8px; text-transform:uppercase;
+    color:var(--gold); text-shadow:0 3px 0 rgba(0,0,0,.6);
+  }
+  .overlay .box p{ margin:0; color:#b9c8cf; font-size:15px; line-height:1.6; }
+  .overlay .box button{ margin-top:20px; }
   .hidden{ display:none !important; }
 
-  .legend{ display:flex; gap:12px; font-size:.75rem; color:#c9bfe3; margin-top:8px; }
-  .legend span{ display:flex; align-items:center; gap:5px; }
-  .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  @keyframes fade{ from{opacity:0} to{opacity:1} }
+  @keyframes pop{ from{ transform:translateY(14px) scale(.94); opacity:0 } to{ transform:none; opacity:1 } }
+  @keyframes rise{ from{ transform:translateY(14px); opacity:0 } to{ transform:none; opacity:1 } }
+  .wrap > header{ animation:rise .5s ease both; }
+  .layout > div:first-child{ animation:rise .5s .06s ease both; }
+  .side{ animation:rise .5s .12s ease both; }
+
+  @media (max-width:760px){
+    .build-tag{ display:none; }
+  }
+  @media (max-width:620px){
+    body{ padding:18px 14px 34px; }
+    .logo{ gap:10px; letter-spacing:1px; }
+    .score-chip .n{ font-size:34px; }
+    .panel{ padding:14px 14px 16px; }
+    .board-mat{ padding:12px 12px 14px; border-radius:16px; }
+    .mat-bar{ flex-direction:column; align-items:flex-start; gap:8px; }
+    .tagline{ font-size:14px; }
+    .card .name{ font-size:14px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001s !important; }
+  }
 </style>
 </head>
 <body>
+<canvas id="bgCanvas" aria-hidden="true"></canvas>
+<div class="bg-fx vignette" aria-hidden="true"></div>
+<div class="bg-fx scan" aria-hidden="true"></div>
+<div class="build-tag">ANTE 1.0.0 — FULL</div>
+
 <div class="wrap">
   <header>
-    <h1>🃏 Ante Names</h1>
-    <p>Codenames, reskinned with Jokers &amp; Tarots. One device, pass it around, no peeking.</p>
+    <h1 class="logo">
+      <span class="word">Ante</span>
+      <span class="logo-card" aria-hidden="true">
+        <span class="rank">A</span>
+        <span class="suit">♠</span>
+        <span class="rank br">A</span>
+      </span>
+      <span class="word">Names</span>
+    </h1>
+    <p class="tagline">Codenames, reskinned with Jokers &amp; Tarots. One device, pass it around, no peeking.</p>
+    <div class="rule"></div>
   </header>
 
   <div class="layout">
     <div>
-      <div class="panel" style="margin-bottom:16px;">
+      <div class="panel">
         <div class="scoreboard">
           <div class="score-chip red" id="chipRed"><span class="n" id="redCount">9</span>Red left</div>
           <div class="score-chip blue" id="chipBlue"><span class="n" id="blueCount">8</span>Blue left</div>
         </div>
         <div class="status" id="statusLine">Set up a new game to begin.</div>
       </div>
-      <div class="board operative" id="board"></div>
+
+      <div class="board-mat" id="boardMat">
+        <div class="mat-bar">
+          <span class="mat-title">The Ante — 25 Cards</span>
+          <span class="view-badge" id="viewBadge">Operative view</span>
+        </div>
+        <div class="board operative" id="board"></div>
+      </div>
     </div>
 
     <div class="side">
       <div class="panel">
         <h3>New Game</h3>
         <div class="viewbtns">
-          <label style="font-size:.8rem;color:#c9bfe3;">First team:
-            <select id="startTeam" style="margin-left:6px;">
+          <label class="field">First team
+            <select id="startTeam">
               <option value="red">Red</option>
               <option value="blue">Blue</option>
             </select>
@@ -231,13 +607,13 @@
       <div class="panel">
         <h3>View</h3>
         <div class="viewbtns">
-          <button id="viewOperative" class="ghost">Operative view (hidden)</button>
-          <button id="viewSpyRed" class="red-btn">Red Spymaster view</button>
-          <button id="viewSpyBlue" class="blue-btn">Blue Spymaster view</button>
+          <button id="viewOperative" class="ghost">Operative view<span class="b-sub">keys hidden</span></button>
+          <button id="viewSpyRed" class="red-btn">Red Spymaster<span class="b-sub">eyes only</span></button>
+          <button id="viewSpyBlue" class="blue-btn">Blue Spymaster<span class="b-sub">eyes only</span></button>
         </div>
         <div class="legend">
-          <span><i style="background:var(--joker-tick)"></i>Joker</span>
-          <span><i style="background:var(--tarot-tick)"></i>Tarot</span>
+          <span><i style="background:var(--joker-tick); color:var(--joker-tick)"></i>Joker</span>
+          <span><i style="background:var(--tarot-tick); color:var(--tarot-tick)"></i>Tarot</span>
         </div>
       </div>
 
@@ -248,7 +624,7 @@
           <input type="number" id="clueNum" min="0" max="9" value="1">
           <button class="gold" id="submitClue">Go</button>
         </div>
-        <button class="ghost" id="endTurnBtn" style="margin-top:10px; width:100%;">End turn</button>
+        <button class="ghost" id="endTurnBtn" style="margin-top:12px; width:100%;">End turn</button>
       </div>
 
       <div class="panel">
@@ -263,6 +639,7 @@
 
 <div class="overlay hidden" id="passOverlay">
   <div class="box">
+    <div class="suits" aria-hidden="true"><span>♠</span><span>♥</span><span>♦</span><span>♣</span></div>
     <h2 id="passTitle">Pass the device</h2>
     <p id="passText">Only the spymaster should look at the next screen. Everyone else, look away.</p>
     <button class="gold" id="passConfirm">I'm the only one looking →</button>
@@ -271,11 +648,200 @@
 
 <div class="overlay hidden" id="gameOverOverlay">
   <div class="box">
+    <div class="suits" aria-hidden="true"><span>♠</span><span>♥</span><span>♦</span><span>♣</span></div>
     <h2 id="goTitle">Game over</h2>
     <p id="goText"></p>
     <button class="gold" id="goClose">Close</button>
   </div>
 </div>
+
+<script>
+/* ---------------- Balatro paint-swirl background (original shader by localthunk) ---------------- */
+(function(){
+  const canvas = document.getElementById('bgCanvas');
+  let gl = null;
+  try{
+    gl = canvas.getContext('webgl', {antialias:false, alpha:false, depth:false, stencil:false});
+  }catch(e){ gl = null; }
+  if(!gl){ canvas.style.display = 'none'; return; }
+
+  const VS = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
+  const FS = [
+    'precision highp float;',
+    'uniform vec2 iResolution;',
+    'uniform float iTime;',
+    '#define SPIN_ROTATION -2.0',
+    '#define SPIN_SPEED 4.2',
+    '#define OFFSET vec2(0.0)',
+    '#define COLOUR_1 vec4(0.871, 0.267, 0.231, 1.0)',
+    '#define COLOUR_2 vec4(0.0, 0.42, 0.706, 1.0)',
+    '#define COLOUR_3 vec4(0.086, 0.137, 0.145, 1.0)',
+    '#define CONTRAST 3.5',
+    '#define LIGHTING 0.4',
+    '#define SPIN_AMOUNT 0.25',
+    '#define PIXEL_FILTER 745.0',
+    '#define SPIN_EASE 1.0',
+    'vec4 effect(vec2 screenSize, vec2 screen_coords){',
+    '  float pixel_size = length(screenSize.xy) / PIXEL_FILTER;',
+    '  vec2 uv = (floor(screen_coords.xy*(1.0/pixel_size))*pixel_size - 0.5*screenSize.xy)/length(screenSize.xy) - OFFSET;',
+    '  float uv_len = length(uv);',
+    '  float speed = (SPIN_ROTATION*SPIN_EASE*0.2) + 302.2;',
+    '  float new_pixel_angle = atan(uv.y, uv.x) + speed - SPIN_EASE*20.0*(1.0*SPIN_AMOUNT*uv_len + (1.0 - 1.0*SPIN_AMOUNT));',
+    '  vec2 mid = (screenSize.xy/length(screenSize.xy))/2.0;',
+    '  uv = (vec2((uv_len * cos(new_pixel_angle) + mid.x), (uv_len * sin(new_pixel_angle) + mid.y)) - mid);',
+    '  uv *= 30.0;',
+    '  speed = iTime*(SPIN_SPEED);',
+    '  vec2 uv2 = vec2(uv.x+uv.y);',
+    '  for(int i = 0; i < 5; i++){',
+    '    uv2 += sin(max(uv.x, uv.y)) + uv;',
+    '    uv += 0.5*vec2(cos(5.1123314 + 0.353*uv2.y + speed*0.131121), sin(uv2.x - 0.113*speed));',
+    '    uv -= 1.0*cos(uv.x + uv.y) - 1.0*sin(uv.x*0.711 - uv.y);',
+    '  }',
+    '  float contrast_mod = (0.25*CONTRAST + 0.5*SPIN_AMOUNT + 1.2);',
+    '  float paint_res = min(2.0, max(0.0, length(uv)*(0.035)*contrast_mod));',
+    '  float c1p = max(0.0, 1.0 - contrast_mod*abs(1.0-paint_res));',
+    '  float c2p = max(0.0, 1.0 - contrast_mod*abs(paint_res));',
+    '  float c3p = 1.0 - min(1.0, c1p + c2p);',
+    '  float light = (LIGHTING - 0.2)*max(c1p*5.0 - 4.0, 0.0) + LIGHTING*max(c2p*5.0 - 4.0, 0.0);',
+    '  return (0.3/CONTRAST)*COLOUR_1 + (1.0 - 0.3/CONTRAST)*(COLOUR_1*c1p + COLOUR_2*c2p + vec4(c3p*COLOUR_3.rgb, c3p*COLOUR_1.a)) + light;',
+    '}',
+    'void main(){ gl_FragColor = effect(iResolution, gl_FragCoord.xy); }'
+  ].join('\n');
+
+  function compile(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) return null;
+    return s;
+  }
+  const vs = compile(gl.VERTEX_SHADER, VS);
+  const fs = compile(gl.FRAGMENT_SHADER, FS);
+  if(!vs || !fs){ canvas.style.display='none'; return; }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){ canvas.style.display='none'; return; }
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+  const uRes = gl.getUniformLocation(prog, 'iResolution');
+  const uTime = gl.getUniformLocation(prog, 'iTime');
+
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w = 0, h = 0;
+  function resize(){
+    const scale = Math.min(window.devicePixelRatio || 1, 1.5) * 0.55;
+    const nw = Math.max(64, Math.floor(window.innerWidth * scale));
+    const nh = Math.max(64, Math.floor(window.innerHeight * scale));
+    if(nw === w && nh === h) return;
+    w = nw; h = nh;
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+    gl.uniform2f(uRes, w, h);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const start = performance.now();
+  let running = true;
+  document.addEventListener('visibilitychange', () => {
+    running = !document.hidden;
+    if(running && !reduce) requestAnimationFrame(frame);
+  });
+  function frame(){
+    if(!running) return;
+    gl.uniform1f(uTime, (performance.now() - start) / 1000);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if(!reduce) requestAnimationFrame(frame);
+  }
+  if(reduce){ gl.uniform1f(uTime, 12.0); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+  else requestAnimationFrame(frame);
+})();
+</script>
+
+<script>
+/* ------------------------------------------------------------------------------------------
+   Balatro card art — real game sprite atlases hosted on GitHub.
+   Jokers.png / Tarots.png are 10-column sheets of 71×95 cells (Balatro © LocalThunk / Playstack).
+   Sources:
+     • VilleKokkarinen/SampleJimbos  → Balatro_Textures/Jokers.png, Tarots.png
+     • EFHIII/balatro-calculator     → assets/Jokers.png (fallback mirror)
+   Grid coordinates below mirror the game's atlas layout (x = column, y = row).
+------------------------------------------------------------------------------------------ */
+const ATLAS_SOURCES = {
+  joker: [
+    'https://raw.githubusercontent.com/VilleKokkarinen/SampleJimbos/master/Balatro_Textures/Jokers.png',
+    'https://raw.githubusercontent.com/EFHIII/balatro-calculator/main/assets/Jokers.png'
+  ],
+  tarot: [
+    'https://raw.githubusercontent.com/VilleKokkarinen/SampleJimbos/master/Balatro_Textures/Tarots.png'
+  ]
+};
+
+const JOKER_GRID = [
+  ["Joker","Chaos the Clown","Jolly Joker","Zany Joker","Mad Joker","Crazy Joker","Droll Joker","Half Joker","Merry Andy","Stone Joker"],
+  ["Juggler","Drunkard","Acrobat","Sock and Buskin","Mime","Credit Card","Greedy Joker","Lusty Joker","Wrathful Joker","Gluttonous Joker"],
+  ["Troubadour","Banner","Mystic Summit","Marble Joker","Loyalty Card","Hack","Misprint","Steel Joker","Raised Fist","Golden Joker"],
+  ["Blueprint","Glass Joker","Scary Face","Abstract Joker","Delayed Gratification","Golden Ticket","Pareidolia","Cartomancer","Even Steven","Odd Todd"],
+  ["Wee Joker","Business Card","Supernova","Mr. Bones","Seeing Double","The Duo","The Trio","The Family","The Order","The Tribe"],
+  ["8 Ball","Fibonacci","Joker Stencil","Space Joker","Matador","Ceremonial Dagger","Showman","Fortune Teller","Hit the Road","Swashbuckler"],
+  ["Flower Pot","Ride the Bus","Shoot the Moon","Scholar","Smeared Joker","Oops! All 6s","Four Fingers","Gros Michel","Stuntman","Hanging Chad"],
+  ["Driver's License","Invisible Joker","Astronomer","Burnt Joker","Dusk","Throwback","The Idol","Brainstorm","Satellite","Rough Gem"],
+  ["Bloodstone","Arrowhead","Onyx Agate","Canio","Triboulet","Yorick","Chicot","Perkeo","Certificate","Bootstraps"],
+  [],
+  ["Egg","Burglar","Blackboard","Runner","Ice Cream","DNA","Splash","Blue Joker","Sixth Sense","Constellation"],
+  ["Hiker","Faceless Joker","Green Joker","Superposition","To Do List","Cavendish","Card Sharp","Red Card","Madness","Square Joker"],
+  ["Séance","Riff-Raff","Vampire","Shortcut","Hologram","Vagabond","Baron","Cloud 9","Rocket","Obelisk"],
+  ["Midas Mask","Luchador","Photograph","Gift Card","Turtle Bean","Erosion","Reserved Parking","Mail-In Rebate","To the Moon","Hallucination"],
+  ["Sly Joker","Wily Joker","Clever Joker","Devious Joker","Crafty Joker","Lucky Cat","Baseball Card","Bull","Diet Cola","Trading Card"],
+  ["Flash Card","Popcorn","Ramen","Seltzer","Spare Trousers","Campfire","Smiley Face","Ancient Joker","Walkie Talkie","Castle"]
+];
+
+const TAROT_GRID = [
+  ["The Fool","The Magician","The High Priestess","The Empress","The Emperor","The Hierophant","The Lovers","The Chariot","Justice","The Hermit"],
+  ["Wheel of Fortune","Strength","The Hanged Man","Death","Temperance","The Devil","The Tower","The Star","The Moon","The Sun"],
+  ["Judgement","The World"]
+];
+
+const SPRITE_POS = { joker:{}, tarot:{} };
+const normName = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+JOKER_GRID.forEach((row, y) => row.forEach((n, x) => { SPRITE_POS.joker[normName(n)] = [x, y]; }));
+TAROT_GRID.forEach((row, y) => row.forEach((n, x) => { SPRITE_POS.tarot[normName(n)] = [x, y]; }));
+
+function spritePos(card){
+  const table = SPRITE_POS[card.type];
+  return table ? (table[normName(card.name)] || null) : null;
+}
+
+(function loadAtlases(){
+  const root = document.documentElement;
+  Object.entries(ATLAS_SOURCES).forEach(([kind, urls]) => {
+    let i = 0;
+    const attempt = () => {
+      if(i >= urls.length) return;
+      const url = urls[i++];
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const cellW = img.naturalWidth / 10;
+        const rows = Math.max(1, Math.round(img.naturalHeight / (cellW * 95 / 71)));
+        root.style.setProperty('--atlas-' + kind, `url("${url}")`);
+        root.style.setProperty('--rows-' + kind, String(rows));
+        document.body.classList.add('atlas-' + kind);
+      };
+      img.onerror = attempt;
+      img.src = url;
+    };
+    attempt();
+  });
+})();
+</script>
 
 <script>
 /* ---------------- Card data: Balatro-flavored, original short descriptions ---------------- */
@@ -527,7 +1093,10 @@ function render(){
     if(c.revealed) div.classList.add('revealed', c.key);
     else if(isSpy) div.classList.add('key-' + c.key);
 
+    const pos = spritePos(c);
+    if(pos) div.classList.add('has-art');
     div.innerHTML = `
+      ${pos ? `<span class="art" style="--sx:${pos[0]};--sy:${pos[1]}" aria-hidden="true"></span>` : ''}
       <span class="type-tick" title="${c.type === 'joker' ? 'Joker' : 'Tarot'}"></span>
       <span class="pip">${c.pip}</span>
       <span class="name">${c.name}</span>
@@ -669,6 +1238,36 @@ document.getElementById('submitClue').addEventListener('click', () => {
 
 /* Kick off an initial game on load */
 newGame();
+</script>
+
+<script>
+/* ---------------- Cosmetic layer only: mirrors the board's view state into the chrome ---------------- */
+(function(){
+  try{
+    const board = document.getElementById('board');
+    const mat = document.getElementById('boardMat');
+    const badge = document.getElementById('viewBadge');
+    const btns = {
+      op: document.getElementById('viewOperative'),
+      red: document.getElementById('viewSpyRed'),
+      blue: document.getElementById('viewSpyBlue')
+    };
+    function sync(){
+      const spyRed = board.classList.contains('spy-red');
+      const spyBlue = board.classList.contains('spy-blue');
+      mat.classList.toggle('spy-red', spyRed);
+      mat.classList.toggle('spy-blue', spyBlue);
+      badge.classList.toggle('red', spyRed);
+      badge.classList.toggle('blue', spyBlue);
+      badge.textContent = spyRed ? 'Red Spymaster view' : spyBlue ? 'Blue Spymaster view' : 'Operative view';
+      btns.op.classList.toggle('is-active', !spyRed && !spyBlue);
+      btns.red.classList.toggle('is-active', spyRed);
+      btns.blue.classList.toggle('is-active', spyBlue);
+    }
+    new MutationObserver(sync).observe(board, {attributes:true, attributeFilter:['class']});
+    sync();
+  }catch(e){ /* purely decorative */ }
+})();
 </script>
 </body>
 </html>
