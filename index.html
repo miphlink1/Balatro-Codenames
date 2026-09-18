@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#101619">
-<title>Ante Names</title>
+<title>Ante Names — a Balatro-themed Codenames</title>
 <link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preload" as="image" href="https://raw.githubusercontent.com/VilleKokkarinen/SampleJimbos/master/Balatro_Textures/Jokers.png" crossorigin>
@@ -298,18 +298,33 @@
   }
 
   /* ---- Real Balatro sprite art (atlases pulled from GitHub, see script) ---- */
+  @property --sx { syntax: '<number>'; inherits: true; initial-value: 0; }
+  @property --sy { syntax: '<number>'; inherits: true; initial-value: 0; }
+  @property --rows { syntax: '<number>'; inherits: true; initial-value: 16; }
+
   .card .art{
     display:none;
     position:absolute; left:0; top:0; width:100%; aspect-ratio:71/95; z-index:0;
     background-repeat:no-repeat;
-    background-size:1000% auto;
-    background-position:calc(var(--sx, 0) / 9 * 100%) calc(var(--sy, 0) / (var(--rows, 16) - 1) * 100%);
+    background-size: 1000% calc(var(--rows) * 100%);
+    background-position: calc(var(--sx) * 100% / 9) calc(var(--sy) * 100% / (var(--rows) - 1));
     image-rendering:pixelated; image-rendering:crisp-edges;
     pointer-events:none;
     transition:filter .2s ease;
   }
   .card.joker .art{ background-image:var(--atlas-joker); --rows:var(--rows-joker, 16); }
   .card.tarot .art{ background-image:var(--atlas-tarot); --rows:var(--rows-tarot, 6); }
+  .card .art.soul{
+    z-index:1;
+    animation: soulBob 2.6s ease-in-out infinite;
+  }
+  @keyframes soulBob{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-7%); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .card .art.soul{ animation:none; }
+  }
   body.atlas-joker .card.joker .art,
   body.atlas-tarot .card.tarot .art{ display:block; }
 
@@ -554,7 +569,7 @@
 <canvas id="bgCanvas" aria-hidden="true"></canvas>
 <div class="bg-fx vignette" aria-hidden="true"></div>
 <div class="bg-fx scan" aria-hidden="true"></div>
-<div class="build-tag">BALATRO CODENAMES</div>
+<div class="build-tag">ANTE 1.0.0 — FULL</div>
 
 <div class="wrap">
   <header>
@@ -567,7 +582,7 @@
       </span>
       <span class="word">Names</span>
     </h1>
-    <p class="tagline">Codenames, but balatro</p>
+    <p class="tagline">Codenames, reskinned with Jokers &amp; Tarots. One device, pass it around, no peeking.</p>
     <div class="rule"></div>
   </header>
 
@@ -814,9 +829,23 @@ const normName = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/
 JOKER_GRID.forEach((row, y) => row.forEach((n, x) => { SPRITE_POS.joker[normName(n)] = [x, y]; }));
 TAROT_GRID.forEach((row, y) => row.forEach((n, x) => { SPRITE_POS.tarot[normName(n)] = [x, y]; }));
 
+/* Legendary jokers + Hologram store a background at `pos` and the face at `soul_pos` (row 9 of Jokers.png). */
+const SOUL_POS = {
+  canio: [3, 9],
+  triboulet: [4, 9],
+  yorick: [5, 9],
+  chicot: [6, 9],
+  perkeo: [7, 9],
+  hologram: [2, 9]
+};
+
 function spritePos(card){
   const table = SPRITE_POS[card.type];
   return table ? (table[normName(card.name)] || null) : null;
+}
+function soulPos(card){
+  if(card.type !== 'joker') return null;
+  return SOUL_POS[normName(card.name)] || null;
 }
 
 (function loadAtlases(){
@@ -1094,9 +1123,11 @@ function render(){
     else if(isSpy) div.classList.add('key-' + c.key);
 
     const pos = spritePos(c);
+    const soul = soulPos(c);
     if(pos) div.classList.add('has-art');
     div.innerHTML = `
       ${pos ? `<span class="art" style="--sx:${pos[0]};--sy:${pos[1]}" aria-hidden="true"></span>` : ''}
+      ${soul ? `<span class="art soul" style="--sx:${soul[0]};--sy:${soul[1]}" aria-hidden="true"></span>` : ''}
       <span class="type-tick" title="${c.type === 'joker' ? 'Joker' : 'Tarot'}"></span>
       <span class="pip">${c.pip}</span>
       <span class="name">${c.name}</span>
